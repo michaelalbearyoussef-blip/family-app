@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#6b2145"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><title>أسرة البابا ديميتريوس الكرام</title>
+<style>
+:root{--bg:#faf6f8;--card:#fff;--tx:#2a1a22;--mu:#7a6670;--pri:#6b2145;--gold:#c9a24a;--bd:#e6d9df;--ok:#2e7d4f;--no:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1217;--card:#26191f;--tx:#f3e8ed;--mu:#b39ba6;--pri:#d28bb0;--bd:#3d2a33;--ok:#6fcf97;--no:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1a1217;--card:#26191f;--tx:#f3e8ed;--mu:#b39ba6;--pri:#d28bb0;--bd:#3d2a33;--ok:#6fcf97;--no:#ff8a80;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Tahoma,"Segoe UI",Arial,sans-serif;font-size:15px}
+header{padding:14px 16px 6px;text-align:center}h1{margin:0;font-size:19px;color:var(--pri)}small{color:var(--mu)}
+nav{display:flex;gap:6px;overflow-x:auto;padding:8px 12px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+nav button{flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
+nav button.on{background:var(--pri);color:var(--bg);border-color:var(--pri)}
+main{max-width:760px;margin:0 auto;padding:8px 12px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 130px}
+input,select{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;margin:3px 0}
+button.b{padding:10px 14px;border:0;border-radius:8px;background:var(--pri);color:var(--bg);font:inherit;cursor:pointer}
+button.g{background:none;border:1px solid var(--bd);color:var(--tx);padding:6px 10px;border-radius:8px;font:inherit}
+.msg{background:var(--gold);color:#222;padding:8px 12px;border-radius:8px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ok{color:var(--ok)}.no{color:var(--no)}.mu{color:var(--mu);font-size:13px}
+.sw{overflow-x:auto}svg.bc{max-width:100%}
+video{width:100%;max-height:260px;border-radius:10px;display:none;background:#000}
+.done{text-decoration:line-through;color:var(--mu)}.g.on{background:var(--pri);color:var(--bg)}.tag{font-size:12px;background:var(--gold);color:#222;border-radius:10px;padding:1px 8px}
+</style></head><body>
+<header><h1>✝ أسرة البابا ديميتريوس الكرام</h1><small id="st"></small></header>
+<nav id="nav"></nav><main id="app"></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script>
+const $=s=>document.querySelector(s),g=id=>($('#'+id)||{}).value||'';
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const C=['members','events','tasks','money'],S={members:[],events:[],tasks:[],money:[]};
+const T={members:'الأعضاء',att:'الحضور',events:'الأنشطة',tasks:'المهام',money:'المالية'};
+const today=new Date().toISOString().slice(0,10);
+let db=null,tab='members',ed='',ev='',msg='',pend=false,rf='',cf='';
+const R=['عضو','خادم','مساعد'];
+function lsLoad(){C.forEach(c=>{try{S[c]=JSON.parse(localStorage.getItem('fam_'+c)||'[]')}catch(e){S[c]=[]}})}
+function lsSave(c){try{localStorage.setItem('fam_'+c,JSON.stringify(S[c]))}catch(e){}}
+async function put(c,o){
+ if(!o.id)o.id=Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+ const i=S[c].findIndex(x=>x.id===o.id);i<0?S[c].push(o):S[c][i]=o;lsSave(c);render(true);
+ if(db){try{await db.collection(c).doc(o.id).set(o)}catch(e){msg='اتحفظ على جهازك بس، ومحفظش على السيرفر: '+((e&&(e.code||e.message))||'');render(true)}}}
+async function rm(c,id){
+ if(cf!==c+id){cf=c+id;msg='اضغط حذف مرة تانية للتأكيد';render(true);return}cf='';
+ S[c]=S[c].filter(x=>x.id!==id);lsSave(c);render(true);
+ if(db){try{await db.collection(c).doc(id).delete()}catch(e){msg='الحذف محصلش على السيرفر: '+((e&&(e.code||e.message))||'');render(true)}}}
+function go(k){tab=k;ed='';render(true)}
+const mName=id=>(S.members.find(m=>m.id===id)||{}).name||'—';
+const pastEv=()=>S.events.filter(e=>e.date<=today);
+const V={};T.backup='نسخ احتياطي';
+V.backup=()=>`<div class="card"><b>نسخة احتياطية</b><p class="mu">البيانات محفوظة على الجهاز ده بس، فخد نسخة بشكل دوري.</p><button class="b" onclick="exp()">تحميل نسخة</button></div><div class="card"><b>استرجاع نسخة</b><p class="mu">اختار ملف النسخة (.json)</p><input type="file" id="f" accept=".json,application/json" onchange="imp(this.files[0])"></div>`;
+function exp(){const b=new Blob([JSON.stringify(S)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='family-backup-'+today+'.json';document.body.appendChild(a);a.click();a.remove()}
+function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);C.forEach(c=>{S[c]=Array.isArray(d[c])?d[c]:[];lsSave(c)});msg='تم الاسترجاع';render(true)}catch(e){msg='الملف غير صالح';render(true)}};r.readAsText(f)}
+
+V.members=()=>{const e=S.members.find(m=>m.id===ed)||{};const n=pastEv().length;
+ return `<div class="card"><b>${ed?'تعديل عضو':'إضافة عضو'}</b>
+ <input id="n" placeholder="الاسم" value="${esc(e.name)}"><select id="r">${R.map(r=>`<option ${r===(e.role||'عضو')?'selected':''}>${r}</option>`).join('')}</select><div class="row"><input id="p" placeholder="الموبايل" value="${esc(e.phone)}"><input id="y" placeholder="الفرقة / الكلية" value="${esc(e.year)}"></div>
+ <input id="a" placeholder="العنوان" value="${esc(e.addr)}">
+ <button class="b" onclick="saveM()">حفظ</button> ${ed?'<button class="g" onclick="go(\'members\')">إلغاء</button>':''}</div>
+ <div class="row">${['',...R].map(r=>`<button class="g ${r===rf?'on':''}" onclick="rf='${r}';render(true)">${r||'الكل'} (${r?S.members.filter(m=>(m.role||'عضو')===r).length:S.members.length})</button>`).join('')}</div>`+
+ S.members.filter(m=>!rf||(m.role||'عضو')===rf).sort((a,b)=>a.id-b.id).map(m=>{const a=pastEv().filter(x=>x.att&&x.att[m.id]).length;
+ return `<div class="card"><div class="top"><span><b>${esc(m.name)}</b> <span class="tag">${esc(m.role||'عضو')}</span></span><span class="mu">#${esc(m.id)}</span></div>
+ <div class="mu">${esc(m.phone)} · ${esc(m.year)} · ${esc(m.addr)}</div>
+ <div>حضر <b class="ok">${a}</b> · غاب <b class="no">${n-a}</b></div>
+ <div class="sw"><svg class="bc" data-v="${esc(m.id)}"></svg></div>
+ <button class="g" onclick="ed='${m.id}';render(true);scrollTo(0,0)">تعديل</button> <button class="g" onclick="rm('members','${m.id}')">حذف</button></div>`}).join('')};
+function saveM(){if(!g('n').trim()){msg='اكتب الاسم';return render(true)}
+ const o=S.members.find(m=>m.id===ed)||{id:String(Math.max(1000,...S.members.map(m=>+m.id||0))+1)};
+ Object.assign(o,{name:g('n').trim(),role:g('r')||'عضو',phone:g('p'),year:g('y'),addr:g('a')});ed='';put('members',o)}
+V.att=()=>{const evs=S.events.slice().sort((a,b)=>b.date.localeCompare(a.date));
+ if(!evs.length)return '<div class="card">ضيف اجتماع أو نشاط الأول من تبويب الأنشطة.</div>';
+ if(!evs.find(e=>e.id===ev))ev=(evs.find(e=>e.date<=today)||evs[0]).id;
+ const e=evs.find(x=>x.id===ev),at=e.att||{},c=Object.values(at).filter(Boolean).length;
+ return `<div class="card"><select id="es" onchange="ev=this.value;render(true)">${evs.map(x=>`<option value="${x.id}" ${x.id===ev?'selected':''}>${esc(x.title)} — ${esc(x.date)}</option>`).join('')}</select>
+ <div class="row"><input id="code" placeholder="رقم العضو (ID)" inputmode="numeric" onkeydown="if(event.key==='Enter')mark(this.value)"><button class="b" onclick="mark(g('code'))">تسجيل</button><button class="b" onclick="scan()">📷 مسح باركود</button></div>
+ <video id="cam" playsinline muted></video></div>
+ <p class="mu">الحاضرين: ${c} من ${S.members.length}</p>`+
+ S.members.slice().sort((a,b)=>a.id-b.id).map(m=>`<div class="card top"><span>${at[m.id]?'<b class="ok">✓</b>':'<b class="no">✗</b>'} ${esc(m.name)} <span class="tag">${esc(m.role||'عضو')}</span> <span class="mu">#${esc(m.id)}</span></span><button class="g" onclick="tog('${m.id}')">${at[m.id]?'إلغاء':'حاضر'}</button></div>`).join('')};
+function setAtt(id,v){const e=S.events.find(x=>x.id===ev);if(!e)return;e.att=Object.assign({},e.att,{[id]:v});put('events',e)}
+function tog(id){const e=S.events.find(x=>x.id===ev);setAtt(id,!(e.att&&e.att[id]))}
+function mark(v){v=String(v).trim();const m=S.members.find(x=>x.id===v);
+ if(!m){msg='الرقم ده مش موجود';return render(true)}
+ msg='تم تسجيل حضور: '+m.name;setAtt(m.id,true)}
+async function scan(){
+ if(!('BarcodeDetector' in window)){msg='المتصفح ده مش بيدعم مسح الباركود، اكتب الرقم يدويًا (أو افتح من كروم)';return render(true)}
+ try{const v=$('#cam'),st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.style.display='block';v.srcObject=st;await v.play();
+ const bd=new BarcodeDetector({formats:['code_128','qr_code']});let on=true;
+ v.onclick=()=>{on=false;st.getTracks().forEach(t=>t.stop());v.style.display='none'};
+ (async function loop(){if(!on)return;try{const r=await bd.detect(v);if(r.length){mark(r[0].rawValue);on=false;st.getTracks().forEach(t=>t.stop())}}catch(e){}requestAnimationFrame(loop)})()
+ }catch(e){msg='مقدرتش أفتح الكاميرا، اكتب الرقم يدويًا';render(true)}}
+V.events=()=>`<div class="card"><b>إضافة اجتماع / نشاط / رحلة</b><input id="t" placeholder="العنوان"><div class="row"><input id="d" type="date" value="${today}"><select id="k"><option>اجتماع</option><option>نشاط</option><option>رحلة</option><option>خدمة</option></select></div><input id="no" placeholder="ملاحظات / المكان"><button class="b" onclick="addE()">إضافة</button></div>`+
+ S.events.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`<div class="card"><div class="top"><b>${esc(e.title)}</b><span class="mu">${esc(e.kind)}</span></div><div class="mu">${esc(e.date)} · ${esc(e.note)}</div><div>حضور: <b>${Object.values(e.att||{}).filter(Boolean).length}</b></div><button class="g" onclick="ev='${e.id}';go('att')">تسجيل الحضور</button> <button class="g" onclick="rm('events','${e.id}')">حذف</button></div>`).join('');
+function addE(){if(!g('t').trim()){msg='اكتب العنوان';return render(true)}put('events',{title:g('t').trim(),date:g('d')||today,kind:g('k'),note:g('no'),att:{}})}
+V.tasks=()=>`<div class="card"><b>مهمة جديدة</b><input id="t" placeholder="المهمة"><div class="row"><select id="w"><option value="">— المسؤول —</option>${S.members.map(m=>`<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select><input id="d" type="date"></div><button class="b" onclick="addT()">إضافة</button></div>`+
+ S.tasks.slice().sort((a,b)=>(a.done|0)-(b.done|0)).map(t=>`<div class="card top"><span class="${t.done?'done':''}">${esc(t.title)}<br><span class="mu">${t.who?esc(mName(t.who)):''} ${esc(t.due)}</span></span><span><button class="g" onclick="doneT('${t.id}')">${t.done?'↩':'✓'}</button> <button class="g" onclick="rm('tasks','${t.id}')">✕</button></span></div>`).join('');
+function addT(){if(!g('t').trim()){msg='اكتب المهمة';return render(true)}put('tasks',{title:g('t').trim(),who:g('w'),due:g('d'),done:false})}
+function doneT(id){const t=S.tasks.find(x=>x.id===id);put('tasks',Object.assign({},t,{done:!t.done}))}
+V.money=()=>{const s=k=>S.money.filter(x=>x.kind===k).reduce((a,x)=>a+x.amt,0),i=s('وارد'),o=s('صادر');
+ return `<div class="card top"><span>وارد <b class="ok">${i}</b></span><span>صادر <b class="no">${o}</b></span><span>الرصيد <b>${i-o}</b></span></div>
+ <div class="card"><div class="row"><select id="k"><option>وارد</option><option>صادر</option></select><input id="am" type="number" inputmode="decimal" placeholder="المبلغ"></div><input id="no" placeholder="البيان"><button class="b" onclick="addM()">إضافة</button></div>`+
+ S.money.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(x=>`<div class="card top"><span>${esc(x.note)}<br><span class="mu">${esc(x.date)}</span></span><span class="${x.kind==='وارد'?'ok':'no'}">${x.kind==='وارد'?'+':'−'}${x.amt} <button class="g" onclick="rm('money','${x.id}')">✕</button></span></div>`).join('')};
+function addM(){const a=parseFloat(g('am'));if(!(a>0)){msg='اكتب مبلغ صحيح';return render(true)}put('money',{kind:g('k'),amt:a,note:g('no'),date:today})}
+function render(f){const a=document.activeElement;
+ if(!f&&a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)){pend=true;return}
+ pend=false;
+ $('#nav').innerHTML=Object.keys(T).map(k=>`<button class="${k===tab?'on':''}" onclick="go('${k}')">${T[k]}</button>`).join('');
+ let h;try{h=V[tab]()}catch(e){h='<p class="msg">خطأ: '+esc(e.message)+'</p>'}
+ $('#app').innerHTML=(msg?`<p class="msg">${esc(msg)}</p>`:'')+h;msg='';
+ document.querySelectorAll('svg.bc').forEach(s=>{try{JsBarcode(s,s.dataset.v,{format:'CODE128',height:34,fontSize:12,margin:2})}catch(e){}})}
+document.addEventListener('focusout',()=>setTimeout(()=>{if(pend)render()},250));
+(async()=>{lsLoad();render(true);
+ db=null
+ if(db){$('#st').textContent='جارٍ التحميل…';
+  const t=setTimeout(()=>$('#st').textContent='السيرفر مش بيرد، الحفظ على جهازك مؤقتًا',10000);
+  C.forEach(c=>{S[c]=[];db.collection(c).onSnapshot(s=>{clearTimeout(t);$('#st').textContent='كل حاجة بتتحفظ تلقائيًا ✓';
+   S[c]=s.docs.map(d=>JSON.parse(JSON.stringify(typeof d.data==='function'?d.data():d)));render()},()=>{$('#st').textContent='خطأ في الاتصال'})})
+ }else $('#st').textContent='محفوظ على الجهاز ده بس'})();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script></body></html>
